@@ -148,7 +148,17 @@ impl<'a> TokenIterator<'a> {
                 let _ = self.read_while(|c| c.is_digit(10) || c == '.');
                 let num_str = &self.input[tmp..self.position];
                 Ok(Token::Number(num_str, num_str.parse::<f64>().unwrap()))
-            }
+            },
+            x if x.is_alphabetic() || x == '_' => {
+                let tmp = self.position - 1;
+                let _ = self.read_while(|c| c.is_alphanumeric() || c == '_');
+                let ident_str = &self.input[tmp..self.position];
+                if ident_str == "var" {
+                    Ok(Token::Var(ident_str))
+                } else {
+                    Ok(Token::Identifier(ident_str))
+                }
+            },
             '(' => Ok(Token::LeftParen("(")),
             ')' => Ok(Token::RightParen(")")),
             '{' => Ok(Token::LeftBrace("{")),
@@ -255,7 +265,7 @@ mod tests {
     fn test_token_iterator_1() {
         let input = "({*.,+*})";
 
-        let mut token_iterator = TokenIterator::new(input);
+        let token_iterator = TokenIterator::new(input);
         let tokens = token_iterator.map(|t| t.unwrap()).collect::<Vec<_>>();
         assert_eq!(tokens.len(), 10);
         assert_eq!(tokens[0].to_string(), "LEFT_PAREN ( null");
@@ -273,7 +283,7 @@ mod tests {
     #[test]
     fn test_token_iterator_unrecognized() {
         let input = "+*%";
-        let mut token_iterator = TokenIterator::new(input);
+        let token_iterator = TokenIterator::new(input);
         let tokens = token_iterator.map(|t| t.unwrap()).collect::<Vec<_>>();
         assert_eq!(tokens.len(), 4);
         assert_eq!(tokens[0].to_string(), "PLUS + null");
@@ -289,7 +299,7 @@ mod tests {
     #[test]
     fn test_token_iterator_equal_and_bang() {
         let input = "=!=!==";
-        let mut token_iterator = TokenIterator::new(input);
+        let token_iterator = TokenIterator::new(input);
         let tokens = token_iterator.map(|t| t.unwrap()).collect::<Vec<_>>();
         assert_eq!(tokens.len(), 5);
         assert_eq!(tokens[0].to_string(), "EQUAL = null");
