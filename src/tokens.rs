@@ -14,6 +14,10 @@ pub enum Token<'a> {
     Minus(&'a str),
     Semicolon(&'a str),
     Slash(&'a str),
+    EqualEqual(&'a str),
+    Equal(&'a str),
+    Bang(&'a str),
+    BangEqual(&'a str),
     Unrecognized(&'a str, usize),
 
 }
@@ -36,6 +40,10 @@ impl<'a> Token<'a> {
             Token::Minus(_) => "MINUS - null".to_string(),
             Token::Semicolon(_) => "SEMICOLON ; null".to_string(),
             Token::Slash(_) => "SLASH / null".to_string(),
+            Token::EqualEqual(_) => "EQUAL_EQUAL == null".to_string(),
+            Token::Equal(_) => "EQUAL = null".to_string(),
+            Token::Bang(_) => "BANG ! null".to_string(),
+            Token::BangEqual(_) => "BANG_EQUAL != null".to_string(),
             Token::Unrecognized(value, pos) => format!("[line {}] Error: Unexpected character: {}", pos, value),
         }
     }
@@ -66,6 +74,10 @@ impl<'a> TokenIterator<'a> {
         ch
     }
 
+    fn peek_char(&self) -> Option<char> {
+        self.input[self.position..].chars().next()
+    }
+
     pub fn next_token(&mut self) -> Token<'a> {
         if self.position >= self.input.len() {
             return Token::EOF;
@@ -82,6 +94,22 @@ impl<'a> TokenIterator<'a> {
             '-' => Token::Minus("-"),
             ';' => Token::Semicolon(";"),
             '/' => Token::Slash("/"),
+            '=' => {
+                if self.peek_char() == Some('=') {
+                    self.read_char();
+                    Token::EqualEqual("==")
+                } else {
+                    Token::Equal("=")
+                }
+            }
+            '!' => {
+                if self.peek_char() == Some('=') {
+                    self.read_char();
+                    Token::BangEqual("!=")
+                } else {
+                    Token::Bang("!")
+                }
+            }
             c => {
                 let pos = self.position;
                 let line_number = self.find_line_number(pos);
@@ -137,5 +165,31 @@ mod tests {
         assert_eq!(tokens[7].to_string(), "RIGHT_BRACE } null");
         assert_eq!(tokens[8].to_string(), "RIGHT_PAREN ) null");
         assert_eq!(tokens.last().unwrap().to_string(), "EOF  null");
+    }
+
+    #[test]
+    fn test_token_iterator_unrecognized() {
+        let input = "+*%";
+        let mut token_iterator = TokenIterator::new(input);
+        let tokens = token_iterator.collect::<Vec<_>>();
+        assert_eq!(tokens.len(), 4);
+        assert_eq!(tokens[0].to_string(), "PLUS + null");
+        assert_eq!(tokens[1].to_string(), "STAR * null");
+        assert_eq!(tokens[2].to_string(), "[line 1] Error: Unexpected character: %");
+        assert_eq!(tokens[3].to_string(), "EOF  null");
+        assert_eq!(tokens.last().unwrap().to_string(), "EOF  null");
+    }
+
+    #[test]
+    fn test_token_iterator_equal_and_bang() {
+        let input = "=!=!==";
+        let mut token_iterator = TokenIterator::new(input);
+        let tokens = token_iterator.collect::<Vec<_>>();
+        assert_eq!(tokens.len(), 5);
+        assert_eq!(tokens[0].to_string(), "EQUAL = null");
+        assert_eq!(tokens[1].to_string(), "BANG_EQUAL != null");
+        assert_eq!(tokens[2].to_string(), "BANG_EQUAL != null");
+        assert_eq!(tokens[3].to_string(), "EQUAL = null");
+        assert_eq!(tokens[4].to_string(), "EOF  null");
     }
 }
