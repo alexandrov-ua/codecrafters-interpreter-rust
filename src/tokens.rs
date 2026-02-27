@@ -1,7 +1,6 @@
 use std::fmt::Display;
 
 pub enum Token<'a> {
-    Var(&'a str),
     Identifier(&'a str),
     StringLiteral(&'a str, &'a str),
     EOF,
@@ -25,7 +24,24 @@ pub enum Token<'a> {
     Greater(&'a str),
     GreaterEqual(&'a str),
     Number(&'a str, f64),
+    Class(&'a str),
+    Else(&'a str),
+    False(&'a str),
+    For(&'a str),
+    Fun(&'a str),
+    If(&'a str),
+    Nil(&'a str),
+    Or(&'a str),
+    Print(&'a str),
+    Return(&'a str),
+    Super(&'a str),
+    This(&'a str),
+    True(&'a str),
+    While(&'a str),
+    Var(&'a str),
+    And(&'a str),
 }
+
 #[derive(Debug)]
 pub enum TokinizationError {
     UnrecognizedCharacter(String, usize),
@@ -79,6 +95,21 @@ impl<'a> Token<'a> {
             Token::Greater(_) => "GREATER > null".to_string(),
             Token::GreaterEqual(_) => "GREATER_EQUAL >= null".to_string(),
             Token::Number(l, v) => format!("NUMBER {} {:?}", l, v),
+            Token::And(name) => format!("AND {} null", name),
+            Token::Class(name) => format!("CLASS {} null", name),
+            Token::Else(name) => format!("ELSE {} null", name),
+            Token::False(name) => format!("FALSE {} null", name),
+            Token::For(name) => format!("FOR {} null", name),
+            Token::Fun(name) => format!("FUN {} null", name),
+            Token::If(name) => format!("IF {} null", name),
+            Token::Nil(name) => format!("NIL {} null", name),
+            Token::Or(name) => format!("OR {} null", name),
+            Token::Print(name) => format!("PRINT {} null", name),
+            Token::Return(name) => format!("RETURN {} null", name),
+            Token::Super(name) => format!("SUPER {} null", name),
+            Token::This(name) => format!("THIS {} null", name),
+            Token::True(name) => format!("TRUE {} null", name),
+            Token::While(name) => format!("WHILE {} null", name),
         }
     }
 }
@@ -87,6 +118,28 @@ pub struct TokenIterator<'a> {
     input: &'a str,
     position: usize,
     is_eof: bool,
+}
+
+fn reserved_or_identifier<'a>(ident_str: &'a str) -> Token<'a> {
+    match ident_str {
+        "and" => Token::And(ident_str),
+        "class" => Token::Class(ident_str),
+        "else" => Token::Else(ident_str),
+        "false" => Token::False(ident_str),
+        "for" => Token::For(ident_str),
+        "fun" => Token::Fun(ident_str),
+        "if" => Token::If(ident_str),
+        "nil" => Token::Nil(ident_str),
+        "or" => Token::Or(ident_str),
+        "print" => Token::Print(ident_str),
+        "return" => Token::Return(ident_str),
+        "super" => Token::Super(ident_str),
+        "this" => Token::This(ident_str),
+        "true" => Token::True(ident_str),
+        "var" => Token::Var(ident_str),
+        "while" => Token::While(ident_str),
+        _ => Token::Identifier(ident_str),
+    }
 }
 
 impl<'a> TokenIterator<'a> {
@@ -148,17 +201,13 @@ impl<'a> TokenIterator<'a> {
                 let _ = self.read_while(|c| c.is_digit(10) || c == '.');
                 let num_str = &self.input[tmp..self.position];
                 Ok(Token::Number(num_str, num_str.parse::<f64>().unwrap()))
-            },
+            }
             x if x.is_alphabetic() || x == '_' => {
                 let tmp = self.position - 1;
                 let _ = self.read_while(|c| c.is_alphanumeric() || c == '_');
                 let ident_str = &self.input[tmp..self.position];
-                if ident_str == "var" {
-                    Ok(Token::Var(ident_str))
-                } else {
-                    Ok(Token::Identifier(ident_str))
-                }
-            },
+                Ok(reserved_or_identifier(ident_str))
+            }
             '(' => Ok(Token::LeftParen("(")),
             ')' => Ok(Token::RightParen(")")),
             '{' => Ok(Token::LeftBrace("{")),
