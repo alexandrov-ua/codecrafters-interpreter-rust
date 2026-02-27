@@ -1,7 +1,9 @@
+use std::fmt::Display;
+
 pub enum Token<'a> {
     Var(&'a str),
     Identifier(&'a str),
-    StringLiteral(&'a str),
+    StringLiteral(&'a str, &'a str),
     EOF,
     LeftParen(&'a str),
     RightParen(&'a str),
@@ -22,7 +24,31 @@ pub enum Token<'a> {
     LessEqual(&'a str),
     Greater(&'a str),
     GreaterEqual(&'a str),
-    Unrecognized(&'a str, usize),
+}
+#[derive(Debug)]
+pub enum TokinizationError {
+    UnrecognizedCharacter(String, usize),
+    UnterminatedStringLiteral(usize),
+}
+
+impl Display for TokinizationError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.to_string())
+    }
+}
+impl std::error::Error for TokinizationError {}
+
+impl TokinizationError {
+    pub fn to_string(&self) -> String {
+        match self {
+            TokinizationError::UnrecognizedCharacter(ch, line) => {
+                format!("[line {}] Error: Unexpected character: {}", line, ch)
+            }
+            TokinizationError::UnterminatedStringLiteral(line) => {
+                format!("[line {}] Error: Unterminated string.", line)
+            }
+        }
+    }
 }
 
 impl<'a> Token<'a> {
@@ -30,7 +56,7 @@ impl<'a> Token<'a> {
         match self {
             Token::Var(name) => format!("VAR {} null", name),
             Token::Identifier(name) => format!("IDENTIFIER {} null", name),
-            Token::StringLiteral(value) => format!("STRING {} null", value),
+            Token::StringLiteral(l, v) => format!("STRING {} {}", l, v),
             Token::EOF => "EOF  null".to_string(),
             Token::LeftParen(_) => "LEFT_PAREN ( null".to_string(),
             Token::RightParen(_) => "RIGHT_PAREN ) null".to_string(),
@@ -51,9 +77,6 @@ impl<'a> Token<'a> {
             Token::LessEqual(_) => "LESS_EQUAL <= null".to_string(),
             Token::Greater(_) => "GREATER > null".to_string(),
             Token::GreaterEqual(_) => "GREATER_EQUAL >= null".to_string(),
-            Token::Unrecognized(value, pos) => {
-                format!("[line {}] Error: Unexpected character: {}", pos, value)
-            }
         }
     }
 }
@@ -82,10 +105,11 @@ impl<'a> TokenIterator<'a> {
         self.position += ch.len_utf8();
         ch
     }
-    fn read_until(&mut self, stop_char: char) -> &'a str {
+
+    fn read_until_rn(&mut self) -> &'a str {
         let start = self.position;
         while let Some(ch) = self.peek_char() {
-            if ch == stop_char {
+            if ch == '\n' {
                 break;
             }
             self.read_char();
@@ -93,86 +117,114 @@ impl<'a> TokenIterator<'a> {
         &self.input[start..self.position]
     }
 
+    fn read_while<F>(&mut self, condition: F) -> Option<&'a str>
+    where
+        F: Fn(char) -> bool,
+    {
+        let start = self.position;
+        while let Some(ch) = self.peek_char() {
+            if !condition(ch) {
+                return Some(&self.input[start..self.position]);
+            }
+            self.read_char();
+        }
+        None
+    }
+
     fn peek_char(&self) -> Option<char> {
         self.input[self.position..].chars().next()
     }
 
-    pub fn next_token(&mut self) -> Token<'a> {
+    pub fn next_token(&mut self) -> Result<Token<'a>, TokinizationError> {
         if self.position >= self.input.len() {
-            return Token::EOF;
+            return Ok(Token::EOF);
         }
         return match self.read_char() {
             x if x.is_whitespace() => self.next_token(),
-            '(' => Token::LeftParen("("),
-            ')' => Token::RightParen(")"),
-            '{' => Token::LeftBrace("{"),
-            '}' => Token::RightBrace("}"),
-            '*' => Token::Star("*"),
-            '.' => Token::Dot("."),
-            ',' => Token::Comma(","),
-            '+' => Token::Plus("+"),
-            '-' => Token::Minus("-"),
-            ';' => Token::Semicolon(";"),
+            '(' => Ok(Token::LeftParen("(")),
+            ')' => Ok(Token::RightParen(")")),
+            '{' => Ok(Token::LeftBrace("{")),
+            '}' => Ok(Token::RightBrace("}")),
+            '*' => Ok(Token::Star("*")),
+            '.' => Ok(Token::Dot(".")),
+            ',' => Ok(Token::Comma(",")),
+            '+' => Ok(Token::Plus("+")),
+            '-' => Ok(Token::Minus("-")),
+            ';' => Ok(Token::Semicolon(";")),
             '/' => {
                 if self.peek_char() == Some('/') {
-                    self.read_until('\n');
+                    self.read_until_rn();
                     self.next_token()
                 } else {
-                    Token::Slash("/")
+                    Ok(Token::Slash("/"))
                 }
             }
             '=' => {
                 if self.peek_char() == Some('=') {
                     self.read_char();
-                    Token::EqualEqual("==")
+                    Ok(Token::EqualEqual("=="))
                 } else {
-                    Token::Equal("=")
+                    Ok(Token::Equal("="))
                 }
             }
             '!' => {
                 if self.peek_char() == Some('=') {
                     self.read_char();
-                    Token::BangEqual("!=")
+                    Ok(Token::BangEqual("!="))
                 } else {
-                    Token::Bang("!")
+                    Ok(Token::Bang("!"))
                 }
             }
             '<' => {
                 if self.peek_char() == Some('=') {
                     self.read_char();
-                    Token::LessEqual("<=")
+                    Ok(Token::LessEqual("<="))
                 } else {
-                    Token::Less("<")
+                    Ok(Token::Less("<"))
                 }
             }
             '>' => {
                 if self.peek_char() == Some('=') {
                     self.read_char();
-                    Token::GreaterEqual(">=")
+                    Ok(Token::GreaterEqual(">="))
                 } else {
-                    Token::Greater(">")
+                    Ok(Token::Greater(">"))
+                }
+            }
+            '"' => {
+                let tmp = self.position - 1;
+                let val = self.read_while(|c| c != '\"');
+                if let Some(v) = val {
+                    self.read_char();
+                    Ok(Token::StringLiteral(&self.input[tmp..self.position], v))
+                } else {
+                    let line_number = self.find_line_number(self.position);
+                    Err(TokinizationError::UnterminatedStringLiteral(line_number))
                 }
             }
             c => {
                 let pos = self.position;
                 let line_number = self.find_line_number(pos);
-                Token::Unrecognized(&self.input[pos - 1..pos], line_number)
+                Err(TokinizationError::UnrecognizedCharacter(
+                    c.to_string(),
+                    line_number,
+                ))
             }
         };
     }
 }
 
 impl<'a> Iterator for TokenIterator<'a> {
-    type Item = Token<'a>;
+    type Item = Result<Token<'a>, TokinizationError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.is_eof {
             return None;
         }
         let token = self.next_token();
-        if let Token::EOF = token {
+        if let Ok(Token::EOF) = token {
             self.is_eof = true;
-            Some(Token::EOF)
+            Some(Ok(Token::EOF))
         } else {
             Some(token)
         }
@@ -187,7 +239,7 @@ mod tests {
     fn test_token_iterator() {
         let input = "";
         let mut token_iterator = TokenIterator::new(input);
-        let token = token_iterator.next().unwrap();
+        let token = token_iterator.next().unwrap().unwrap();
         assert_eq!(token.to_string(), "EOF  null");
     }
 
@@ -196,7 +248,7 @@ mod tests {
         let input = "({*.,+*})";
 
         let mut token_iterator = TokenIterator::new(input);
-        let tokens = token_iterator.collect::<Vec<_>>();
+        let tokens = token_iterator.map(|t| t.unwrap()).collect::<Vec<_>>();
         assert_eq!(tokens.len(), 10);
         assert_eq!(tokens[0].to_string(), "LEFT_PAREN ( null");
         assert_eq!(tokens[1].to_string(), "LEFT_BRACE { null");
@@ -214,7 +266,7 @@ mod tests {
     fn test_token_iterator_unrecognized() {
         let input = "+*%";
         let mut token_iterator = TokenIterator::new(input);
-        let tokens = token_iterator.collect::<Vec<_>>();
+        let tokens = token_iterator.map(|t| t.unwrap()).collect::<Vec<_>>();
         assert_eq!(tokens.len(), 4);
         assert_eq!(tokens[0].to_string(), "PLUS + null");
         assert_eq!(tokens[1].to_string(), "STAR * null");
@@ -230,12 +282,40 @@ mod tests {
     fn test_token_iterator_equal_and_bang() {
         let input = "=!=!==";
         let mut token_iterator = TokenIterator::new(input);
-        let tokens = token_iterator.collect::<Vec<_>>();
+        let tokens = token_iterator.map(|t| t.unwrap()).collect::<Vec<_>>();
         assert_eq!(tokens.len(), 5);
         assert_eq!(tokens[0].to_string(), "EQUAL = null");
         assert_eq!(tokens[1].to_string(), "BANG_EQUAL != null");
         assert_eq!(tokens[2].to_string(), "BANG_EQUAL != null");
         assert_eq!(tokens[3].to_string(), "EQUAL = null");
         assert_eq!(tokens[4].to_string(), "EOF  null");
+    }
+
+    #[test]
+    fn test_token_iterator_string_literal() {
+        let input = "\"Hello, World!\"";
+        let token_iterator = TokenIterator::new(input);
+        let tokens = token_iterator.map(|t| t.unwrap()).collect::<Vec<_>>();
+        assert_eq!(tokens.len(), 2);
+        assert_eq!(
+            tokens[0].to_string(),
+            "STRING \"Hello, World!\" Hello, World!"
+        );
+        assert_eq!(tokens[1].to_string(), "EOF  null");
+    }
+
+    #[test]
+    fn test_token_iterator_string_literal_negative() {
+        let input = "\"Hello, World!";
+        let token_iterator = TokenIterator::new(input);
+        let tokens_err = token_iterator
+            .map(|t| t.err())
+            .flatten()
+            .collect::<Vec<_>>();
+        assert_eq!(tokens_err.len(), 1);
+        assert_eq!(
+            tokens_err[0].to_string(),
+            "[line 1] Error: Unterminated string."
+        );
     }
 }

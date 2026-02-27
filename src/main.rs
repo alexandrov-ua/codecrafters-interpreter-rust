@@ -4,7 +4,6 @@ use std::env;
 use std::fs;
 use std::process::exit;
 
-
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() < 3 {
@@ -23,16 +22,15 @@ fn main() {
                 String::new()
             });
 
-            let mut token_iterator = tokens::TokenIterator::new(&file_contents);
+            let token_iterator = tokens::TokenIterator::new(&file_contents);
             for token in token_iterator {
-                if let tokens::Token::Unrecognized(_, _) = token {
-                    is_error = true;
-                    eprintln!("{}", token.to_string());
+                match token {
+                    Ok(tok) => println!("{}", tok.to_string()),
+                    Err(e) => {
+                        eprintln!("{}", e);
+                        is_error = true;
+                    }
                 }
-                else{
-                    println!("{}", token.to_string());
-                }
-                
             }
             if is_error {
                 std::process::exit(65);
