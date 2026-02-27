@@ -11,6 +11,10 @@ pub enum Token<'a> {
     Dot(&'a str),
     Comma(&'a str),
     Plus(&'a str),
+    Minus(&'a str),
+    Semicolon(&'a str),
+    Slash(&'a str),
+
 }
 
 impl<'a> Token<'a> {
@@ -28,6 +32,9 @@ impl<'a> Token<'a> {
             Token::Dot(_) => "DOT . null".to_string(),
             Token::Comma(_) => "COMMA , null".to_string(),
             Token::Plus(_) => "PLUS + null".to_string(),
+            Token::Minus(_) => "MINUS - null".to_string(),
+            Token::Semicolon(_) => "SEMICOLON ; null".to_string(),
+            Token::Slash(_) => "SLASH / null".to_string(),
         }
     }
 }
@@ -66,6 +73,9 @@ impl<'a> TokenIterator<'a> {
             '.' => Token::Dot("."),
             ',' => Token::Comma(","),
             '+' => Token::Plus("+"),
+            '-' => Token::Minus("-"),
+            ';' => Token::Semicolon(";"),
+            '/' => Token::Slash("/"),
             _ => {
                 if self.position >= self.input.len() {
                     return Token::EOF;
@@ -101,7 +111,9 @@ impl<'a> Iterator for TokenIterator<'a> {
 // DOT . null
 // COMMA , null
 // PLUS + null
-// STAR * null
+// MINUS - null
+// SEMICOLON ; null
+// SLASH / null
 // RIGHT_BRACE } null
 // RIGHT_PAREN ) null
 // EOF  null
