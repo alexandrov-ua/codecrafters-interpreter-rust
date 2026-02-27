@@ -18,8 +18,11 @@ pub enum Token<'a> {
     Equal(&'a str),
     Bang(&'a str),
     BangEqual(&'a str),
+    Less(&'a str),
+    LessEqual(&'a str),
+    Greater(&'a str),
+    GreaterEqual(&'a str),
     Unrecognized(&'a str, usize),
-
 }
 
 impl<'a> Token<'a> {
@@ -44,7 +47,13 @@ impl<'a> Token<'a> {
             Token::Equal(_) => "EQUAL = null".to_string(),
             Token::Bang(_) => "BANG ! null".to_string(),
             Token::BangEqual(_) => "BANG_EQUAL != null".to_string(),
-            Token::Unrecognized(value, pos) => format!("[line {}] Error: Unexpected character: {}", pos, value),
+            Token::Less(_) => "LESS < null".to_string(),
+            Token::LessEqual(_) => "LESS_EQUAL <= null".to_string(),
+            Token::Greater(_) => "GREATER > null".to_string(),
+            Token::GreaterEqual(_) => "GREATER_EQUAL >= null".to_string(),
+            Token::Unrecognized(value, pos) => {
+                format!("[line {}] Error: Unexpected character: {}", pos, value)
+            }
         }
     }
 }
@@ -73,6 +82,16 @@ impl<'a> TokenIterator<'a> {
         self.position += ch.len_utf8();
         ch
     }
+    fn read_until(&mut self, stop_char: char) -> &'a str {
+        let start = self.position;
+        while let Some(ch) = self.peek_char() {
+            if ch == stop_char {
+                break;
+            }
+            self.read_char();
+        }
+        &self.input[start..self.position]
+    }
 
     fn peek_char(&self) -> Option<char> {
         self.input[self.position..].chars().next()
@@ -83,6 +102,7 @@ impl<'a> TokenIterator<'a> {
             return Token::EOF;
         }
         return match self.read_char() {
+            x if x.is_whitespace() => self.next_token(),
             '(' => Token::LeftParen("("),
             ')' => Token::RightParen(")"),
             '{' => Token::LeftBrace("{"),
@@ -93,7 +113,14 @@ impl<'a> TokenIterator<'a> {
             '+' => Token::Plus("+"),
             '-' => Token::Minus("-"),
             ';' => Token::Semicolon(";"),
-            '/' => Token::Slash("/"),
+            '/' => {
+                if self.peek_char() == Some('/') {
+                    self.read_until('\n');
+                    self.next_token()
+                } else {
+                    Token::Slash("/")
+                }
+            }
             '=' => {
                 if self.peek_char() == Some('=') {
                     self.read_char();
@@ -110,10 +137,26 @@ impl<'a> TokenIterator<'a> {
                     Token::Bang("!")
                 }
             }
+            '<' => {
+                if self.peek_char() == Some('=') {
+                    self.read_char();
+                    Token::LessEqual("<=")
+                } else {
+                    Token::Less("<")
+                }
+            }
+            '>' => {
+                if self.peek_char() == Some('=') {
+                    self.read_char();
+                    Token::GreaterEqual(">=")
+                } else {
+                    Token::Greater(">")
+                }
+            }
             c => {
                 let pos = self.position;
                 let line_number = self.find_line_number(pos);
-                Token::Unrecognized(&self.input[pos-1..pos], line_number)
+                Token::Unrecognized(&self.input[pos - 1..pos], line_number)
             }
         };
     }
@@ -175,7 +218,10 @@ mod tests {
         assert_eq!(tokens.len(), 4);
         assert_eq!(tokens[0].to_string(), "PLUS + null");
         assert_eq!(tokens[1].to_string(), "STAR * null");
-        assert_eq!(tokens[2].to_string(), "[line 1] Error: Unexpected character: %");
+        assert_eq!(
+            tokens[2].to_string(),
+            "[line 1] Error: Unexpected character: %"
+        );
         assert_eq!(tokens[3].to_string(), "EOF  null");
         assert_eq!(tokens.last().unwrap().to_string(), "EOF  null");
     }
