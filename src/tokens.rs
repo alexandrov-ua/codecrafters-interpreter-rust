@@ -24,6 +24,7 @@ pub enum Token<'a> {
     LessEqual(&'a str),
     Greater(&'a str),
     GreaterEqual(&'a str),
+    Number(&'a str, f64),
 }
 #[derive(Debug)]
 pub enum TokinizationError {
@@ -77,6 +78,7 @@ impl<'a> Token<'a> {
             Token::LessEqual(_) => "LESS_EQUAL <= null".to_string(),
             Token::Greater(_) => "GREATER > null".to_string(),
             Token::GreaterEqual(_) => "GREATER_EQUAL >= null".to_string(),
+            Token::Number(l, v) => format!("NUMBER {} {:?}", l, v),
         }
     }
 }
@@ -141,6 +143,12 @@ impl<'a> TokenIterator<'a> {
         }
         return match self.read_char() {
             x if x.is_whitespace() => self.next_token(),
+            x if x.is_digit(10) => {
+                let tmp = self.position - 1;
+                let _ = self.read_while(|c| c.is_digit(10) || c == '.');
+                let num_str = &self.input[tmp..self.position];
+                Ok(Token::Number(num_str, num_str.parse::<f64>().unwrap()))
+            }
             '(' => Ok(Token::LeftParen("(")),
             ')' => Ok(Token::RightParen(")")),
             '{' => Ok(Token::LeftBrace("{")),
