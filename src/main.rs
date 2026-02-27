@@ -27,8 +27,12 @@ fn main() {
             for token in token_iterator {
                 if let tokens::Token::Unrecognized(_, _) = token {
                     is_error = true;
+                    eprintln!("{}", token.to_string());
                 }
-                println!("{}", token.to_string());
+                else{
+                    println!("{}", token.to_string());
+                }
+                
             }
             if is_error {
                 std::process::exit(65);
