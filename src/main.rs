@@ -2,6 +2,7 @@ mod tokens;
 
 use std::env;
 use std::fs;
+use std::process::exit;
 
 
 fn main() {
@@ -14,6 +15,7 @@ fn main() {
     let command = &args[1];
     let filename = &args[2];
 
+    let mut is_error = false;
     match command.as_str() {
         "tokenize" => {
             let file_contents = fs::read_to_string(filename).unwrap_or_else(|_| {
@@ -23,11 +25,18 @@ fn main() {
 
             let mut token_iterator = tokens::TokenIterator::new(&file_contents);
             for token in token_iterator {
+                if let tokens::Token::Unrecognized(_, _) = token {
+                    is_error = true;
+                }
                 println!("{}", token.to_string());
+            }
+            if is_error {
+                std::process::exit(65);
             }
         }
         _ => {
             eprintln!("Unknown command: {}", command);
+            exit(-1);
         }
     }
 }
