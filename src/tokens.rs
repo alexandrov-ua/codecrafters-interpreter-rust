@@ -14,6 +14,7 @@ pub enum Token<'a> {
     Minus(&'a str),
     Semicolon(&'a str),
     Slash(&'a str),
+    Unrecognized(&'a str, usize),
 
 }
 
@@ -35,6 +36,7 @@ impl<'a> Token<'a> {
             Token::Minus(_) => "MINUS - null".to_string(),
             Token::Semicolon(_) => "SEMICOLON ; null".to_string(),
             Token::Slash(_) => "SLASH / null".to_string(),
+            Token::Unrecognized(value, pos) => format!("[line {}] Error: Unexpected character: {}", pos, value),
         }
     }
 }
@@ -52,6 +54,10 @@ impl<'a> TokenIterator<'a> {
             position: 0,
             is_eof: false,
         }
+    }
+
+    fn find_line_number(&self, pos: usize) -> usize {
+        self.input[..pos].chars().filter(|&c| c == '\n').count() + 1
     }
 
     fn read_char(&mut self) -> char {
@@ -76,13 +82,10 @@ impl<'a> TokenIterator<'a> {
             '-' => Token::Minus("-"),
             ';' => Token::Semicolon(";"),
             '/' => Token::Slash("/"),
-            _ => {
-                if self.position >= self.input.len() {
-                    return Token::EOF;
-                }
-                // For simplicity, we treat any other character as EOF in this example.
-                // In a real implementation, you would handle identifiers, string literals, etc.
-                return Token::EOF;
+            c => {
+                let pos = self.position;
+                let line_number = self.find_line_number(pos);
+                Token::Unrecognized(&self.input[pos-1..pos], line_number)
             }
         };
     }
@@ -105,26 +108,13 @@ impl<'a> Iterator for TokenIterator<'a> {
     }
 }
 
-// LEFT_PAREN ( null
-// LEFT_BRACE { null
-// STAR * null
-// DOT . null
-// COMMA , null
-// PLUS + null
-// MINUS - null
-// SEMICOLON ; null
-// SLASH / null
-// RIGHT_BRACE } null
-// RIGHT_PAREN ) null
-// EOF  null
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_token_iterator() {
-        let input = "\r\n";
+        let input = "";
         let mut token_iterator = TokenIterator::new(input);
         let token = token_iterator.next().unwrap();
         assert_eq!(token.to_string(), "EOF  null");
@@ -133,6 +123,7 @@ mod tests {
     #[test]
     fn test_token_iterator_1() {
         let input = "({*.,+*})";
+
         let mut token_iterator = TokenIterator::new(input);
         let tokens = token_iterator.collect::<Vec<_>>();
         assert_eq!(tokens.len(), 10);
