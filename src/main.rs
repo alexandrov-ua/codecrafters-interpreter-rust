@@ -76,7 +76,7 @@ fn main() {
             let tokens: Vec<Token> = token_iterator
                 .map(|res| res.unwrap_or_else(|e| {
                     eprintln!("{}", e);
-                    exit(65);
+                    exit(70);
                 }))
                 .collect();
 
@@ -86,12 +86,12 @@ fn main() {
                     Ok(value) => println!("{}", value),
                     Err(e) => {
                         eprintln!("{}", e);
-                        exit(65);
+                        exit(70);
                     }
                 },
                 Err(e) => {
                     eprintln!("{}", e);
-                    exit(65);
+                    exit(70);
                 }
             }
         }
