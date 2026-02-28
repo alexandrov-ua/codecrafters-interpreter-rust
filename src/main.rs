@@ -1,4 +1,6 @@
 mod tokens;
+mod parser;
+mod syntax;
 
 use std::env;
 use std::fs;
@@ -34,6 +36,29 @@ fn main() {
             }
             if is_error {
                 std::process::exit(65);
+            }
+        }
+        "parse" => {
+            let file_contents = fs::read_to_string(filename).unwrap_or_else(|_| {
+                eprintln!("Failed to read file {}", filename);
+                String::new()
+            });
+
+            let token_iterator = tokens::TokenIterator::new(&file_contents);
+            let tokens: Vec<tokens::Token> = token_iterator
+                .map(|res| res.unwrap_or_else(|e| {
+                    eprintln!("{}", e);
+                    std::process::exit(65);
+                }))
+                .collect();
+
+            let mut parser = parser::Parser::new(tokens);
+            match parser.parse() {
+                Ok(ast) => println!("{}", ast),
+                Err(e) => {
+                    eprintln!("{}", e);
+                    std::process::exit(65);
+                }
             }
         }
         _ => {
