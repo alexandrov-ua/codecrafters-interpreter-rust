@@ -65,8 +65,8 @@ impl<'a> Parser<'a> {
                     Token::Minus(_) => SyntaxNode::MinusBinary(Box::new(left), Box::new(right)),
                     Token::Star(_) => SyntaxNode::MultiplyBinary(Box::new(left), Box::new(right)),
                     Token::Slash(_) => SyntaxNode::DivideBinary(Box::new(left), Box::new(right)),
-                    Token::Equal(_) => SyntaxNode::Equal(Box::new(left), Box::new(right)),
-                    Token::BangEqual(_) => SyntaxNode::Not(Box::new(SyntaxNode::Equal(Box::new(left), Box::new(right)))),
+                    Token::EqualEqual(_) => SyntaxNode::Equal(Box::new(left), Box::new(right)),
+                    Token::BangEqual(_) => SyntaxNode::NotEqual(Box::new(left), Box::new(right)),
                     Token::Less(_) => SyntaxNode::Less(Box::new(left), Box::new(right)),
                     Token::LessEqual(_) => SyntaxNode::LessEqual(Box::new(left), Box::new(right)),
                     Token::Greater(_) => SyntaxNode::Greater(Box::new(left), Box::new(right)),
@@ -224,5 +224,32 @@ mod tests {
         let mut parser = Parser::new(tokens);
         let ast = parser.parse().unwrap();
         assert_eq!(ast.to_string(), "(>= (group (- 17.0 64.0)) (- (group (+ (/ 73.0 17.0) 35.0))))");
+    }
+
+    //"hello"!="foo"
+    #[test]
+    fn test_parse_not_equal() {
+        let tokens = vec![
+            Token::StringLiteral("\"hello\"", "hello"),
+            Token::BangEqual("!="),
+            Token::StringLiteral("\"foo\"", "foo"),
+        ];
+        let mut parser = Parser::new(tokens);
+        let ast = parser.parse().unwrap();
+        assert_eq!(ast.to_string(), "(!= hello foo)");
+    }
+
+    // "world" == "world"
+    #[test]
+    fn test_parse_equal() {
+        let tokens = vec![
+            Token::StringLiteral("\"world\"", "world"),
+            Token::EqualEqual("=="),
+            Token::StringLiteral("\"world\"", "world"),
+
+        ];
+        let mut parser = Parser::new(tokens);
+        let ast = parser.parse().unwrap();
+        assert_eq!(ast.to_string(), "(== world world)");
     }
 }

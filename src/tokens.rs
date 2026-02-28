@@ -116,8 +116,11 @@ impl<'a> Token<'a> {
 
     pub fn get_precedence(&self) -> Option<u8> {
         match self {
-            Token::And(_) | Token::Or(_) | Token::Equal(_) => Some(1),
-            Token::BangEqual(_) | Token::Less(_) | Token::LessEqual(_) | Token::Greater(_) | Token::GreaterEqual(_) => Some(2),
+            Token::And(_) | Token::Or(_) | Token::EqualEqual(_) | Token::BangEqual(_) => Some(1),
+            Token::Less(_)
+            | Token::LessEqual(_)
+            | Token::Greater(_)
+            | Token::GreaterEqual(_) => Some(2),
             Token::Plus(_) | Token::Minus(_) => Some(3),
             Token::Star(_) | Token::Slash(_) => Some(4),
             _ => None,
@@ -399,5 +402,17 @@ mod tests {
             tokens_err[0].to_string(),
             "[line 1] Error: Unterminated string."
         );
+    }
+
+    #[test]
+    fn test_token_iterator_equal() {
+        let input = "\"world\" == \"world\"";
+        let token_iterator = TokenIterator::new(input);
+        let tokens = token_iterator.map(|t| t.unwrap()).collect::<Vec<_>>();
+        assert_eq!(tokens.len(), 4);
+        assert_eq!(tokens[0].to_string(), "STRING \"world\" world");
+        assert_eq!(tokens[1].to_string(), "EQUAL_EQUAL == null");
+        assert_eq!(tokens[2].to_string(), "STRING \"world\" world");
+        assert_eq!(tokens[3].to_string(), "EOF  null");
     }
 }

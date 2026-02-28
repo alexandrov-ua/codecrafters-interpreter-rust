@@ -35,20 +35,20 @@ fn main() {
                 }
             }
             if is_error {
-                std::process::exit(65);
+                exit(65);
             }
         }
         "parse" => {
             let file_contents = fs::read_to_string(filename).unwrap_or_else(|_| {
                 eprintln!("Failed to read file {}", filename);
-                String::new()
+                exit(-1)
             });
 
             let token_iterator = tokens::TokenIterator::new(&file_contents);
             let tokens: Vec<tokens::Token> = token_iterator
                 .map(|res| res.unwrap_or_else(|e| {
                     eprintln!("{}", e);
-                    std::process::exit(65);
+                    exit(65);
                 }))
                 .collect();
 
@@ -57,7 +57,7 @@ fn main() {
                 Ok(ast) => println!("{}", ast),
                 Err(e) => {
                     eprintln!("{}", e);
-                    std::process::exit(65);
+                    exit(65);
                 }
             }
         }

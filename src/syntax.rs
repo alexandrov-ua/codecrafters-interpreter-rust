@@ -10,6 +10,7 @@ pub enum SyntaxNode<'a> {
     LessEqual(Box<SyntaxNode<'a>>, Box<SyntaxNode<'a>>),
     Greater(Box<SyntaxNode<'a>>, Box<SyntaxNode<'a>>),
     GreaterEqual(Box<SyntaxNode<'a>>, Box<SyntaxNode<'a>>),
+    NotEqual(Box<SyntaxNode<'a>>, Box<SyntaxNode<'a>>), 
     NumberLiteral(f64),
     StringLiteral(&'a str),
     PlusBinary(Box<SyntaxNode<'a>>, Box<SyntaxNode<'a>>),
@@ -44,6 +45,7 @@ impl Display for SyntaxNode<'_> {
             SyntaxNode::LessEqual(left, right) => write!(f, "(<= {} {})", left, right),
             SyntaxNode::Greater(left, right) => write!(f, "(> {} {})", left, right),
             SyntaxNode::GreaterEqual(left, right) => write!(f, "(>= {} {})", left, right),
+            SyntaxNode::NotEqual(left, right) => write!(f, "(!= {} {})", left, right),
         }
     }
 }
