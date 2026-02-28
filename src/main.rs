@@ -1,15 +1,15 @@
-mod tokens;
+mod evaluate;
 mod parser;
 mod syntax;
 mod tokenizer;
-mod evaluate;
+mod tokens;
 
+use evaluate::Evaluate;
 use std::env;
 use std::fs;
 use std::process::exit;
-use tokens::Token;
 use tokenizer::TokenIterator;
-use evaluate::Evaluate;
+use tokens::Token;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -51,10 +51,12 @@ fn main() {
 
             let token_iterator = TokenIterator::new(&file_contents);
             let tokens: Vec<Token> = token_iterator
-                .map(|res| res.unwrap_or_else(|e| {
-                    eprintln!("{}", e);
-                    exit(65);
-                }))
+                .map(|res| {
+                    res.unwrap_or_else(|e| {
+                        eprintln!("{}", e);
+                        exit(65);
+                    })
+                })
                 .collect();
 
             let mut parser = parser::Parser::new(tokens);
@@ -74,10 +76,12 @@ fn main() {
 
             let token_iterator = TokenIterator::new(&file_contents);
             let tokens: Vec<Token> = token_iterator
-                .map(|res| res.unwrap_or_else(|e| {
-                    eprintln!("{}", e);
-                    exit(70);
-                }))
+                .map(|res| {
+                    res.unwrap_or_else(|e| {
+                        eprintln!("{}", e);
+                        exit(70);
+                    })
+                })
                 .collect();
 
             let mut parser = parser::Parser::new(tokens);
@@ -92,6 +96,37 @@ fn main() {
                 Err(e) => {
                     eprintln!("{}", e);
                     exit(70);
+                }
+            }
+        }
+        "run" => {
+            let file_contents = fs::read_to_string(filename).unwrap_or_else(|_| {
+                eprintln!("Failed to read file {}", filename);
+                exit(-1)
+            });
+
+            let token_iterator = TokenIterator::new(&file_contents);
+            let tokens: Vec<Token> = token_iterator
+                .map(|res| {
+                    res.unwrap_or_else(|e| {
+                        eprintln!("{}", e);
+                        exit(65);
+                    })
+                })
+                .collect();
+
+            let mut parser = parser::Parser::new(tokens);
+            match parser.parse_program() {
+                Ok(ast) => match ast.evaluate() {
+                    Ok(_) => {}
+                    Err(e) => {
+                        eprintln!("{}", e);
+                        exit(65);
+                    }
+                },
+                Err(e) => {
+                    eprintln!("{}", e);
+                    exit(65);
                 }
             }
         }

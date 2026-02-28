@@ -20,6 +20,9 @@ pub enum SyntaxNode<'a> {
     PlusUnary(Box<SyntaxNode<'a>>),
     MinusUnary(Box<SyntaxNode<'a>>),
     Parens(Box<SyntaxNode<'a>>),
+    Program(Vec<SyntaxNode<'a>>),
+    Print(Box<SyntaxNode<'a>>),
+    Statement(Box<SyntaxNode<'a>>),
     NilLiteral, // Added to represent nil as a literal
 }
 
@@ -46,6 +49,9 @@ impl Display for SyntaxNode<'_> {
             SyntaxNode::Greater(left, right) => write!(f, "(> {} {})", left, right),
             SyntaxNode::GreaterEqual(left, right) => write!(f, "(>= {} {})", left, right),
             SyntaxNode::NotEqual(left, right) => write!(f, "(!= {} {})", left, right),
+            SyntaxNode::Program(v)=> write!(f, "{}", v.get(0).unwrap()),
+            SyntaxNode::Print(s) => write!(f, "(print {})", s),
+            SyntaxNode::Statement(i) => write!(f, "{}", i),
         }
     }
 }

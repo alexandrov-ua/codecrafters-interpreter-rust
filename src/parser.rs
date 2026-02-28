@@ -16,6 +16,28 @@ impl<'a> Parser<'a> {
         self.parse_binary(0)
     }
 
+    pub fn parse_program(&mut self) -> Result<SyntaxNode<'a>, String> {
+        let mut lines = Vec::new();
+
+        while let Some(t) = self.tokens.peek() {
+            match t {
+                Token::EOF => break,
+                Token::Print(_) => {
+                    let _ = self.tokens.next();
+                    let expr = self.parse_binary(0)?;
+                    let _ = self.match_token(|t| matches!(t, Token::Semicolon(_)))?;
+                    lines.push(SyntaxNode::Print(Box::new(expr)));
+                }
+                _ => {
+                    let expr = self.parse_binary(0)?;
+                    let _ = self.match_token(|t| matches!(t, Token::Semicolon(_)))?;
+                    lines.push(SyntaxNode::Statement(Box::new(expr)));
+                }
+            }
+        }
+        Ok(SyntaxNode::Program(lines))
+    }
+
     fn parse_paren_unalry_or_literal(&mut self) -> Result<SyntaxNode<'a>, String> {
         match self.tokens.next() {
             Some(Token::True(_)) => Ok(SyntaxNode::BoolLiteral(true)),
@@ -70,7 +92,9 @@ impl<'a> Parser<'a> {
                     Token::Less(_) => SyntaxNode::Less(Box::new(left), Box::new(right)),
                     Token::LessEqual(_) => SyntaxNode::LessEqual(Box::new(left), Box::new(right)),
                     Token::Greater(_) => SyntaxNode::Greater(Box::new(left), Box::new(right)),
-                    Token::GreaterEqual(_) => SyntaxNode::GreaterEqual(Box::new(left), Box::new(right)),
+                    Token::GreaterEqual(_) => {
+                        SyntaxNode::GreaterEqual(Box::new(left), Box::new(right))
+                    }
                     _ => unreachable!(),
                 };
             } else {
@@ -223,7 +247,10 @@ mod tests {
         ];
         let mut parser = Parser::new(tokens);
         let ast = parser.parse().unwrap();
-        assert_eq!(ast.to_string(), "(>= (group (- 17.0 64.0)) (- (group (+ (/ 73.0 17.0) 35.0))))");
+        assert_eq!(
+            ast.to_string(),
+            "(>= (group (- 17.0 64.0)) (- (group (+ (/ 73.0 17.0) 35.0))))"
+        );
     }
 
     //"hello"!="foo"
@@ -246,7 +273,6 @@ mod tests {
             Token::StringLiteral("\"world\"", "world"),
             Token::EqualEqual("=="),
             Token::StringLiteral("\"world\"", "world"),
-
         ];
         let mut parser = Parser::new(tokens);
         let ast = parser.parse().unwrap();

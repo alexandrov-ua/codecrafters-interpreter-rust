@@ -91,8 +91,8 @@ impl Evaluate for SyntaxNode<'_> {
                 let right_val = right.evaluate()?;
                 match (&left_val, &right_val) {
                     (Value::Bool(l), Value::Bool(r)) => Ok(Value::Bool(*l && *r)),
-                    (Value::Bool(l), Value::Nil) => Ok(Value::Nil),
-                    (Value::Nil, Value::Bool(r)) => Ok(Value::Nil),
+                    (Value::Bool(_), Value::Nil) => Ok(Value::Nil),
+                    (Value::Nil, Value::Bool(_)) => Ok(Value::Nil),
                     (Value::Nil, Value::Nil) => Ok(Value::Nil),
                     _ => Err(format!("Type error in logical AND: {:?} AND {:?}", left_val, right_val)),
                 }
@@ -159,6 +159,18 @@ impl Evaluate for SyntaxNode<'_> {
                     _ => Err(format!("Type error in greater than or equal comparison: {:?} >= {:?}", left_val, right_val)),
                 }
             },
+            SyntaxNode::Statement(e) => e.evaluate(),
+            SyntaxNode::Print(e) => {
+                 println!("{}", e.evaluate()?);
+                 Ok(Value::Nil)
+            },
+            SyntaxNode::Program(v) =>{
+                for i in v{
+                    i.evaluate()?;
+                }
+                Ok(Value::Nil)
+            }
+
         }
     }
 }

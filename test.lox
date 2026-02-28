@@ -1,1 +1,4 @@
-(72 + 454) / 4
+print (72 + 454) / 4;
+true == true;
+print 123;
+print "hello";
