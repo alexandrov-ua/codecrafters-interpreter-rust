@@ -113,6 +113,15 @@ impl<'a> Token<'a> {
             Token::While(name) => format!("WHILE {} null", name),
         }
     }
+
+    pub fn get_precedence(&self) -> Option<u8> {
+        match self {
+            Token::And(_) | Token::Or(_) => Some(1),
+            Token::Plus(_) | Token::Minus(_) => Some(2),
+            Token::Star(_) | Token::Slash(_) => Some(3),
+            _ => None,
+        }
+    }
 }
 
 pub struct TokenIterator<'a> {

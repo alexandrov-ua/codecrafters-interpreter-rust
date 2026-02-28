@@ -13,7 +13,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse(&mut self) -> Result<SyntaxNode<'a>, String> {
-        self.parse_paren_unalry_or_literal()
+        self.parse_binary(0)
     }
 
     fn parse_paren_unalry_or_literal(&mut self) -> Result<SyntaxNode<'a>, String> {
@@ -44,7 +44,7 @@ impl<'a> Parser<'a> {
                 }
             }
             Some(Token::LeftParen(_)) => {
-                let expr = self.parse_paren_unalry_or_literal()?;
+                let expr = self.parse_binary(0)?;
                 self.match_token(|tok| matches!(tok, Token::RightParen(_)))?;
                 Ok(SyntaxNode::Parens(Box::new(expr)))
             }
@@ -55,6 +55,35 @@ impl<'a> Parser<'a> {
             Some(x) => Err(format!("Unexpected token: {}", x.to_string())),
             None => Err("Unexpected end of input".to_string()),
         }
+    }
+
+    fn parse_binary(&mut self, min_precedence: u8) -> Result<SyntaxNode<'a>, String> {
+        let mut left = self.parse_paren_unalry_or_literal()?;
+        while let Some(op) = self.tokens.peek() {
+            let precedence = op.get_precedence();
+
+            if let Some(precedence) = precedence {
+                if precedence <= min_precedence {
+                    break;
+                }
+
+                let op_token = self.tokens.next().unwrap();
+                let right = self.parse_binary(precedence)?;
+
+                left = match op_token {
+                    Token::And(_) => SyntaxNode::And(Box::new(left), Box::new(right)),
+                    Token::Or(_) => SyntaxNode::Or(Box::new(left), Box::new(right)),
+                    Token::Plus(_) => SyntaxNode::PlusBinary(Box::new(left), Box::new(right)),
+                    Token::Minus(_) => SyntaxNode::MinusBinary(Box::new(left), Box::new(right)),
+                    Token::Star(_) => SyntaxNode::MultiplyBinary(Box::new(left), Box::new(right)),
+                    Token::Slash(_) => SyntaxNode::DivideBinary(Box::new(left), Box::new(right)),
+                    _ => unreachable!(),
+                };
+            } else {
+                break;
+            }
+        }
+        Ok(left)
     }
 
     fn match_token(&mut self, expected: fn(&Token<'a>) -> bool) -> Result<Token<'a>, String> {
@@ -99,10 +128,84 @@ mod tests {
 
     #[test]
     fn test_parse_parens() {
-        let tokens = vec![Token::LeftParen("("), Token::Nil("nil"), Token::RightParen(")")];
+        let tokens = vec![
+            Token::LeftParen("("),
+            Token::Nil("nil"),
+            Token::RightParen(")"),
+        ];
         let mut parser = Parser::new(tokens);
         let ast = parser.parse().unwrap();
         assert!(matches!(ast, SyntaxNode::Parens(_)));
         assert_eq!(ast.to_string(), "(group nil)");
+    }
+
+    #[test]
+    fn test_parse_not() {
+        let tokens = vec![Token::Bang("!"), Token::True("true")];
+        let mut parser = Parser::new(tokens);
+        let ast = parser.parse().unwrap();
+        assert!(matches!(ast, SyntaxNode::Not(_)));
+        assert_eq!(ast.to_string(), "(! true)");
+    }
+
+    #[test]
+    fn test_parse_and_or() {
+        let tokens = vec![
+            Token::True("true"),
+            Token::And("and"),
+            Token::False("false"),
+            Token::Or("or"),
+            Token::Nil("nil"),
+        ];
+        let mut parser = Parser::new(tokens);
+        let ast = parser.parse().unwrap();
+        assert!(matches!(ast, SyntaxNode::Or(_, _)));
+        assert_eq!(ast.to_string(), "(OR (AND true false) nil)");
+    }
+
+    #[test]
+    fn test_parse_binary_precedence() {
+        let tokens = vec![
+            Token::Number("1.0", 1.0),
+            Token::Plus("+"),
+            Token::Number("2.0", 2.0),
+            Token::Star("*"),
+            Token::Number("3.0", 3.0),
+        ];
+        let mut parser = Parser::new(tokens);
+        let ast = parser.parse().unwrap();
+        assert!(matches!(ast, SyntaxNode::PlusBinary(_, _)));
+        assert_eq!(ast.to_string(), "(+ 1.0 (* 2.0 3.0))");
+    }
+
+    #[test]
+    fn test_parse_binary_precedence_paren() {
+        let tokens = vec![
+            Token::LeftParen("("),
+            Token::Number("1.0", 1.0),
+            Token::Plus("+"),
+            Token::Number("2.0", 2.0),
+            Token::RightParen(")"),
+            Token::Star("*"),
+            Token::Number("3.0", 3.0),
+        ];
+        let mut parser = Parser::new(tokens);
+        let ast = parser.parse().unwrap();
+        assert_eq!(ast.to_string(), "(* (group (+ 1.0 2.0)) 3.0)");
+    }
+
+    #[test]
+    fn test_parse_binary_precedence_1() {
+        let tokens = vec![
+            Token::Number("1.0", 1.0),
+            Token::Star("*"),
+            Token::Number("2.0", 2.0),
+            Token::Plus("+"),
+            Token::Number("3.0", 3.0),
+        ];
+        let mut parser = Parser::new(tokens);
+        let ast = parser.parse().unwrap();
+        assert!(matches!(ast, SyntaxNode::PlusBinary(_, _)));
+        assert_eq!(ast.to_string(), "(+ (* 1.0 2.0) 3.0)");
     }
 }
