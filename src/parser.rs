@@ -24,24 +24,12 @@ impl<'a> Parser<'a> {
             Some(Token::Number(_, val)) => Ok(SyntaxNode::NumberLiteral(val)),
             Some(Token::StringLiteral(_, v)) => Ok(SyntaxNode::StringLiteral(v)),
             Some(Token::Minus(_)) => {
-                let operand = self.match_token(|tok| matches!(tok, Token::Number(_, _)))?;
-                if let Token::Number(_, val) = operand {
-                    Ok(SyntaxNode::MinusUnary(Box::new(SyntaxNode::NumberLiteral(
-                        val,
-                    ))))
-                } else {
-                    Err("Expected a number after '-'".to_string())
-                }
+                let t = self.parse_binary(Token::get_highest_precedence())?;
+                Ok(SyntaxNode::MinusUnary(Box::new(t)))
             }
             Some(Token::Plus(_)) => {
-                let operand = self.match_token(|tok| matches!(tok, Token::Number(_, _)))?;
-                if let Token::Number(_, val) = operand {
-                    Ok(SyntaxNode::PlusUnary(Box::new(SyntaxNode::NumberLiteral(
-                        val,
-                    ))))
-                } else {
-                    Err("Expected a number after '+'".to_string())
-                }
+                let t = self.parse_binary(Token::get_highest_precedence())?;
+                Ok(SyntaxNode::PlusUnary(Box::new(t)))
             }
             Some(Token::LeftParen(_)) => {
                 let expr = self.parse_binary(0)?;
@@ -77,6 +65,12 @@ impl<'a> Parser<'a> {
                     Token::Minus(_) => SyntaxNode::MinusBinary(Box::new(left), Box::new(right)),
                     Token::Star(_) => SyntaxNode::MultiplyBinary(Box::new(left), Box::new(right)),
                     Token::Slash(_) => SyntaxNode::DivideBinary(Box::new(left), Box::new(right)),
+                    Token::Equal(_) => SyntaxNode::Equal(Box::new(left), Box::new(right)),
+                    Token::BangEqual(_) => SyntaxNode::Not(Box::new(SyntaxNode::Equal(Box::new(left), Box::new(right)))),
+                    Token::Less(_) => SyntaxNode::Less(Box::new(left), Box::new(right)),
+                    Token::LessEqual(_) => SyntaxNode::LessEqual(Box::new(left), Box::new(right)),
+                    Token::Greater(_) => SyntaxNode::Greater(Box::new(left), Box::new(right)),
+                    Token::GreaterEqual(_) => SyntaxNode::GreaterEqual(Box::new(left), Box::new(right)),
                     _ => unreachable!(),
                 };
             } else {
@@ -207,5 +201,28 @@ mod tests {
         let ast = parser.parse().unwrap();
         assert!(matches!(ast, SyntaxNode::PlusBinary(_, _)));
         assert_eq!(ast.to_string(), "(+ (* 1.0 2.0) 3.0)");
+    }
+
+    #[test]
+    fn test_parse_complex_expression() {
+        let tokens = vec![
+            Token::LeftParen("("),
+            Token::Number("17.0", 17.0),
+            Token::Minus("-"),
+            Token::Number("64.0", 64.0),
+            Token::RightParen(")"),
+            Token::GreaterEqual(">="),
+            Token::Minus("-"),
+            Token::LeftParen("("),
+            Token::Number("73.0", 73.0),
+            Token::Slash("/"),
+            Token::Number("17.0", 17.0),
+            Token::Plus("+"),
+            Token::Number("35.0", 35.0),
+            Token::RightParen(")"),
+        ];
+        let mut parser = Parser::new(tokens);
+        let ast = parser.parse().unwrap();
+        assert_eq!(ast.to_string(), "(>= (group (- 17.0 64.0)) (- (group (+ (/ 73.0 17.0) 35.0))))");
     }
 }

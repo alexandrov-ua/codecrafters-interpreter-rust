@@ -116,11 +116,16 @@ impl<'a> Token<'a> {
 
     pub fn get_precedence(&self) -> Option<u8> {
         match self {
-            Token::And(_) | Token::Or(_) => Some(1),
-            Token::Plus(_) | Token::Minus(_) => Some(2),
-            Token::Star(_) | Token::Slash(_) => Some(3),
+            Token::And(_) | Token::Or(_) | Token::Equal(_) => Some(1),
+            Token::BangEqual(_) | Token::Less(_) | Token::LessEqual(_) | Token::Greater(_) | Token::GreaterEqual(_) => Some(2),
+            Token::Plus(_) | Token::Minus(_) => Some(3),
+            Token::Star(_) | Token::Slash(_) => Some(4),
             _ => None,
         }
+    }
+
+    pub fn get_highest_precedence() -> u8 {
+        Token::Star("*").get_precedence().unwrap() + 1
     }
 }
 

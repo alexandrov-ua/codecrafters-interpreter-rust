@@ -5,6 +5,11 @@ pub enum SyntaxNode<'a> {
     And(Box<SyntaxNode<'a>>, Box<SyntaxNode<'a>>),
     Or(Box<SyntaxNode<'a>>, Box<SyntaxNode<'a>>),
     Not(Box<SyntaxNode<'a>>),
+    Equal(Box<SyntaxNode<'a>>, Box<SyntaxNode<'a>>),
+    Less(Box<SyntaxNode<'a>>, Box<SyntaxNode<'a>>),
+    LessEqual(Box<SyntaxNode<'a>>, Box<SyntaxNode<'a>>),
+    Greater(Box<SyntaxNode<'a>>, Box<SyntaxNode<'a>>),
+    GreaterEqual(Box<SyntaxNode<'a>>, Box<SyntaxNode<'a>>),
     NumberLiteral(f64),
     StringLiteral(&'a str),
     PlusBinary(Box<SyntaxNode<'a>>, Box<SyntaxNode<'a>>),
@@ -34,6 +39,11 @@ impl Display for SyntaxNode<'_> {
             SyntaxNode::MinusUnary(expr) => write!(f, "(- {})", expr),
             SyntaxNode::Parens(expr) => write!(f, "(group {})", expr),
             SyntaxNode::NilLiteral => write!(f, "nil"), // Represent nil as a string
+            SyntaxNode::Equal(left, right) => write!(f, "(== {} {})", left, right),
+            SyntaxNode::Less(left, right) => write!(f, "(< {} {})", left, right),
+            SyntaxNode::LessEqual(left, right) => write!(f, "(<= {} {})", left, right),
+            SyntaxNode::Greater(left, right) => write!(f, "(> {} {})", left, right),
+            SyntaxNode::GreaterEqual(left, right) => write!(f, "(>= {} {})", left, right),
         }
     }
 }
