@@ -91,6 +91,9 @@ impl Evaluate for SyntaxNode<'_> {
                 let right_val = right.evaluate()?;
                 match (&left_val, &right_val) {
                     (Value::Bool(l), Value::Bool(r)) => Ok(Value::Bool(*l && *r)),
+                    (Value::Bool(l), Value::Nil) => Ok(Value::Nil),
+                    (Value::Nil, Value::Bool(r)) => Ok(Value::Nil),
+                    (Value::Nil, Value::Nil) => Ok(Value::Nil),
                     _ => Err(format!("Type error in logical AND: {:?} AND {:?}", left_val, right_val)),
                 }
             },
@@ -99,6 +102,9 @@ impl Evaluate for SyntaxNode<'_> {
                 let right_val = right.evaluate()?;
                 match (&left_val, &right_val) {
                     (Value::Bool(l), Value::Bool(r)) => Ok(Value::Bool(*l || *r)),
+                    (Value::Bool(l), Value::Nil) => Ok(Value::Bool(*l)),
+                    (Value::Nil, Value::Bool(r)) => Ok(Value::Bool(*r)),
+                    (Value::Nil, Value::Nil) => Ok(Value::Nil),
                     _ => Err(format!("Type error in logical OR: {:?} OR {:?}", left_val, right_val)),
                 }
             },
@@ -106,6 +112,8 @@ impl Evaluate for SyntaxNode<'_> {
                 let val = expr.evaluate()?;
                 match val {
                     Value::Bool(b) => Ok(Value::Bool(!b)),
+                    Value::Nil => Ok(Value::Bool(true)),
+                    Value::Number(_) => Ok(Value::Bool(false)),
                     _ => Err(format!("Type error in logical NOT: !{:?}", val)),
                 }
             },
