@@ -121,7 +121,7 @@ fn main() {
                     Ok(_) => {}
                     Err(e) => {
                         eprintln!("{}", e);
-                        exit(65);
+                        exit(70);
                     }
                 },
                 Err(e) => {
