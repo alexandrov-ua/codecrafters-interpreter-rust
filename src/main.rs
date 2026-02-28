@@ -1,10 +1,15 @@
 mod tokens;
 mod parser;
 mod syntax;
+mod tokenizer;
+mod evaluate;
 
 use std::env;
 use std::fs;
 use std::process::exit;
+use tokens::Token;
+use tokenizer::TokenIterator;
+use evaluate::Evaluate;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -24,7 +29,7 @@ fn main() {
                 String::new()
             });
 
-            let token_iterator = tokens::TokenIterator::new(&file_contents);
+            let token_iterator = TokenIterator::new(&file_contents);
             for token in token_iterator {
                 match token {
                     Ok(tok) => println!("{}", tok.to_string()),
@@ -44,8 +49,8 @@ fn main() {
                 exit(-1)
             });
 
-            let token_iterator = tokens::TokenIterator::new(&file_contents);
-            let tokens: Vec<tokens::Token> = token_iterator
+            let token_iterator = TokenIterator::new(&file_contents);
+            let tokens: Vec<Token> = token_iterator
                 .map(|res| res.unwrap_or_else(|e| {
                     eprintln!("{}", e);
                     exit(65);
@@ -55,6 +60,35 @@ fn main() {
             let mut parser = parser::Parser::new(tokens);
             match parser.parse() {
                 Ok(ast) => println!("{}", ast),
+                Err(e) => {
+                    eprintln!("{}", e);
+                    exit(65);
+                }
+            }
+        }
+        "evaluate" => {
+            let file_contents = fs::read_to_string(filename).unwrap_or_else(|_| {
+                eprintln!("Failed to read file {}", filename);
+                exit(-1)
+            });
+
+            let token_iterator = TokenIterator::new(&file_contents);
+            let tokens: Vec<Token> = token_iterator
+                .map(|res| res.unwrap_or_else(|e| {
+                    eprintln!("{}", e);
+                    exit(65);
+                }))
+                .collect();
+
+            let mut parser = parser::Parser::new(tokens);
+            match parser.parse() {
+                Ok(ast) => match ast.evaluate() {
+                    Ok(value) => println!("{}", value),
+                    Err(e) => {
+                        eprintln!("{}", e);
+                        exit(65);
+                    }
+                },
                 Err(e) => {
                     eprintln!("{}", e);
                     exit(65);
