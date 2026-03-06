@@ -227,9 +227,6 @@ impl Evaluate for SyntaxNode<'_> {
             }
             SyntaxNode::Variable(name, expr) => {
                 let val = expr.evaluate(context)?;
-                if context.has_variable(name) {
-                    return Err(format!("Variable '{}' is already defined", name));
-                }
                 context.set_variable(name, val.clone());
                 Ok(val)
             }
