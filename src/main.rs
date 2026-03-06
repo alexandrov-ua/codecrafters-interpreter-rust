@@ -86,7 +86,7 @@ fn main() {
 
             let mut parser = parser::Parser::new(tokens);
             match parser.parse() {
-                Ok(ast) => match ast.evaluate() {
+                Ok(ast) => match ast.evaluate(&mut evaluate::ValiableContext::new()) {
                     Ok(value) => println!("{}", value),
                     Err(e) => {
                         eprintln!("{}", e);
@@ -117,7 +117,7 @@ fn main() {
 
             let mut parser = parser::Parser::new(tokens);
             match parser.parse_program() {
-                Ok(ast) => match ast.evaluate() {
+                Ok(ast) => match ast.evaluate(&mut evaluate::ValiableContext::new()) {
                     Ok(_) => {}
                     Err(e) => {
                         eprintln!("{}", e);

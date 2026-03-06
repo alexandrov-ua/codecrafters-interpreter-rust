@@ -23,7 +23,9 @@ pub enum SyntaxNode<'a> {
     Program(Vec<SyntaxNode<'a>>),
     Print(Box<SyntaxNode<'a>>),
     Statement(Box<SyntaxNode<'a>>),
-    NilLiteral, // Added to represent nil as a literal
+    Variable(&'a str, Box<SyntaxNode<'a>>), 
+    Identifier(&'a str), 
+    NilLiteral, 
 }
 
 impl Display for SyntaxNode<'_> {
@@ -52,6 +54,8 @@ impl Display for SyntaxNode<'_> {
             SyntaxNode::Program(v)=> write!(f, "{}", v.get(0).unwrap()),
             SyntaxNode::Print(s) => write!(f, "(print {})", s),
             SyntaxNode::Statement(i) => write!(f, "{}", i),
+            SyntaxNode::Variable(name, expr) => write!(f, "(var {} {})", name, expr),
+            SyntaxNode::Identifier(name) => write!(f, "{}", name),
         }
     }
 }

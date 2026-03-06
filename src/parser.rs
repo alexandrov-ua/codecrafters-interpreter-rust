@@ -27,7 +27,19 @@ impl<'a> Parser<'a> {
                     let expr = self.parse_binary(0)?;
                     let _ = self.match_token(|t| matches!(t, Token::Semicolon(_)))?;
                     lines.push(SyntaxNode::Print(Box::new(expr)));
-                }
+                },
+                Token::Var(_) => {
+                    let _ = self.tokens.next();
+                    let var_name = match self.tokens.next() {
+                        Some(Token::Identifier(name)) => name,
+                        Some(tok) => return Err(format!("Expected variable name, found {}", tok.to_string())),
+                        None => return Err("Unexpected end of input".to_string()),
+                    };
+                    let _ = self.match_token(|t| matches!(t, Token::Equal(_)))?;
+                    let expr = self.parse_binary(0)?;
+                    let _ = self.match_token(|t| matches!(t, Token::Semicolon(_)))?;
+                    lines.push(SyntaxNode::Variable(var_name, Box::new(expr)));
+                },
                 _ => {
                     let expr = self.parse_binary(0)?;
                     let _ = self.match_token(|t| matches!(t, Token::Semicolon(_)))?;
@@ -45,6 +57,7 @@ impl<'a> Parser<'a> {
             Some(Token::Nil(_)) => Ok(SyntaxNode::NilLiteral), // Treat nil as false
             Some(Token::Number(_, val)) => Ok(SyntaxNode::NumberLiteral(val)),
             Some(Token::StringLiteral(_, v)) => Ok(SyntaxNode::StringLiteral(v)),
+            Some(Token::Identifier(name)) => Ok(SyntaxNode::Identifier(name)),
             Some(Token::Minus(_)) => {
                 let t = self.parse_binary(Token::get_highest_precedence())?;
                 Ok(SyntaxNode::MinusUnary(Box::new(t)))
