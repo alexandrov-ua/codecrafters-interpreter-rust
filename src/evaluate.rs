@@ -1,4 +1,4 @@
-use std::{any::Any, fmt::Display};
+use std::fmt::Display;
 
 use crate::syntax::SyntaxNode;
 use std::collections::HashMap;
@@ -232,7 +232,7 @@ impl Evaluate for SyntaxNode<'_> {
                 }
                 context.set_variable(name, val.clone());
                 Ok(val)
-            },
+            }
             SyntaxNode::Identifier(name) => {
                 if let Some(val) = context.get_variable(name) {
                     Ok(val.clone())

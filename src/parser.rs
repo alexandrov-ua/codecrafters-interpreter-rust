@@ -27,19 +27,32 @@ impl<'a> Parser<'a> {
                     let expr = self.parse_binary(0)?;
                     let _ = self.match_token(|t| matches!(t, Token::Semicolon(_)))?;
                     lines.push(SyntaxNode::Print(Box::new(expr)));
-                },
+                }
                 Token::Var(_) => {
                     let _ = self.tokens.next();
                     let var_name = match self.tokens.next() {
                         Some(Token::Identifier(name)) => name,
-                        Some(tok) => return Err(format!("Expected variable name, found {}", tok.to_string())),
+                        Some(tok) => {
+                            return Err(format!(
+                                "Expected variable name, found {}",
+                                tok.to_string()
+                            ));
+                        }
                         None => return Err("Unexpected end of input".to_string()),
                     };
-                    let _ = self.match_token(|t| matches!(t, Token::Equal(_)))?;
-                    let expr = self.parse_binary(0)?;
-                    let _ = self.match_token(|t| matches!(t, Token::Semicolon(_)))?;
-                    lines.push(SyntaxNode::Variable(var_name, Box::new(expr)));
-                },
+                    if self.tokens.peek() == Some(&Token::Semicolon(";")) {
+                        let _ = self.tokens.next();
+                        lines.push(SyntaxNode::Variable(
+                            var_name,
+                            Box::new(SyntaxNode::NilLiteral),
+                        ));
+                    } else {
+                        let _ = self.match_token(|t| matches!(t, Token::Equal(_)))?;
+                        let expr = self.parse_binary(0)?;
+                        let _ = self.match_token(|t| matches!(t, Token::Semicolon(_)))?;
+                        lines.push(SyntaxNode::Variable(var_name, Box::new(expr)));
+                    }
+                }
                 _ => {
                     let expr = self.parse_binary(0)?;
                     let _ = self.match_token(|t| matches!(t, Token::Semicolon(_)))?;

@@ -6,4 +6,7 @@ print 2+3;
 var quz = 20;
 var world = 51;
 var hello = 56;
-print quz + world + he;
+print quz + world + hello;
+
+var a;
+print a;
