@@ -16,22 +16,35 @@ impl<'a> Parser<'a> {
         self.parse_binary(0)
     }
 
-    pub fn parse_program(&mut self) -> Result<SyntaxNode<'a>, String> {
+    pub fn parse_scoupe(&mut self, is_root_scope: bool) -> Result<SyntaxNode<'a>, String> {
         let mut lines = Vec::new();
 
         while let Some(t) = self.tokens.peek() {
-            match t {
+            let syntax_node = match t {
                 Token::EOF => break,
+                Token::LeftBrace(_) => {
+                    let _ = self.tokens.next();
+                    let scoupe_node = self.parse_scoupe(false)?;
+                    self.match_token(|t| matches!(t, Token::RightBrace(_)))?;
+                    scoupe_node
+                },
+                Token::RightBrace(_) => {
+                    if is_root_scope {
+                        return Err("Unexpected '}' at root scope".to_string());
+                    } else {
+                        break;
+                    }
+                },
                 Token::Print(_) => {
                     let _ = self.tokens.next();
                     let expr = self.parse_binary(0)?;
                     let _ = self.match_token(|t| matches!(t, Token::Semicolon(_)))?;
-                    lines.push(SyntaxNode::Print(Box::new(expr)));
+                    SyntaxNode::Print(Box::new(expr))   
                 }
                 Token::Var(_) => {
                     let _ = self.tokens.next();
-                    let var_name = match self.tokens.next() {
-                        Some(Token::Identifier(name)) => name,
+                    let var_name = match self.tokens.peek() {
+                        Some(Token::Identifier(name)) => *name,
                         Some(tok) => {
                             return Err(format!(
                                 "Expected variable name, found {}",
@@ -40,27 +53,19 @@ impl<'a> Parser<'a> {
                         }
                         None => return Err("Unexpected end of input".to_string()),
                     };
-                    if self.tokens.peek() == Some(&Token::Semicolon(";")) {
-                        let _ = self.tokens.next();
-                        lines.push(SyntaxNode::Variable(
-                            var_name,
-                            Box::new(SyntaxNode::NilLiteral),
-                        ));
-                    } else {
-                        let _ = self.match_token(|t| matches!(t, Token::Equal(_)))?;
-                        let expr = self.parse_binary(0)?;
-                        let _ = self.match_token(|t| matches!(t, Token::Semicolon(_)))?;
-                        lines.push(SyntaxNode::Variable(var_name, Box::new(expr)));
-                    }
-                }
+                    let expr =  self.parse_binary(0)?;
+                    let _ = self.match_token(|t| matches!(t, Token::Semicolon(_)))?;
+                    SyntaxNode::Variable(var_name, Box::new(expr))
+                },
                 _ => {
                     let expr = self.parse_binary(0)?;
                     let _ = self.match_token(|t| matches!(t, Token::Semicolon(_)))?;
-                    lines.push(SyntaxNode::Statement(Box::new(expr)));
+                    SyntaxNode::Statement(Box::new(expr))
                 }
-            }
+            };
+            lines.push(syntax_node);
         }
-        Ok(SyntaxNode::Program(lines))
+        Ok(SyntaxNode::Scoupe(lines))
     }
 
     fn parse_paren_unalry_or_literal(&mut self) -> Result<SyntaxNode<'a>, String> {
@@ -87,7 +92,7 @@ impl<'a> Parser<'a> {
             Some(Token::Bang(_)) => {
                 let operand = self.parse_paren_unalry_or_literal()?; // NOT has high precedence
                 Ok(SyntaxNode::Not(Box::new(operand)))
-            },
+            }
             Some(x) => Err(format!("Unexpected token: {}", x.to_string())),
             None => Err("Unexpected end of input".to_string()),
         }
@@ -120,13 +125,11 @@ impl<'a> Parser<'a> {
                     Token::Greater(_) => SyntaxNode::Greater(Box::new(left), Box::new(right)),
                     Token::GreaterEqual(_) => {
                         SyntaxNode::GreaterEqual(Box::new(left), Box::new(right))
-                    },
-                    Token::Equal(_) => {
-                        match left {
-                                SyntaxNode::Identifier(name) => SyntaxNode::Assign(name, Box::new(right)),
-                                _ => return Err(format!("Invalid assignment target: {}", left)),
-                            }
                     }
+                    Token::Equal(_) => match left {
+                        SyntaxNode::Identifier(name) => SyntaxNode::Assign(name, Box::new(right)),
+                        _ => return Err(format!("Invalid assignment target: {}", left)),
+                    },
                     _ => unreachable!(),
                 };
             } else {

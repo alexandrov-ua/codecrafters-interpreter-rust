@@ -26,14 +26,16 @@ impl Display for Value {
     }
 }
 
-pub struct ValiableContext {
+pub struct ValiableContext<'a> {
     variables: HashMap<String, Value>,
+    parent: Option<&'a ValiableContext<'a>>,
 }
 
-impl ValiableContext {
+impl<'a> ValiableContext<'a> {
     pub fn new() -> Self {
         ValiableContext {
             variables: HashMap::new(),
+            parent: None,
         }
     }
 
@@ -42,11 +44,30 @@ impl ValiableContext {
     }
 
     fn get_variable(&self, name: &str) -> Option<&Value> {
-        self.variables.get(name)
+        match self.variables.get(name) {
+            Some(value) => Some(value),
+            None => match &self.parent {
+                Some(parent) => parent.get_variable(name),
+                None => None,
+            },
+        }
     }
 
     fn has_variable(&self, name: &str) -> bool {
-        self.variables.contains_key(name)
+        match self.variables.contains_key(name) {
+            true => true,
+            false => match &self.parent {
+                Some(parent) => parent.has_variable(name),
+                None => false,
+            },
+        }
+    }
+
+    fn new_scoupe<'b>(&'b self) -> ValiableContext<'b> {
+        ValiableContext {
+            variables: HashMap::new(),
+            parent: Some(self),
+        }
     }
 }
 
@@ -219,9 +240,12 @@ impl Evaluate for SyntaxNode<'_> {
                 println!("{}", e.evaluate(context)?);
                 Ok(Value::Nil)
             }
-            SyntaxNode::Program(v) => {
+            SyntaxNode::Scoupe(v) => {
                 for i in v {
-                    i.evaluate(context)?;
+                    match i{
+                        SyntaxNode::Scoupe(_)=> i.evaluate(&mut context.new_scoupe())?,
+                        _ => i.evaluate(context)?,
+                    };
                 }
                 Ok(Value::Nil)
             }
