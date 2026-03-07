@@ -87,7 +87,7 @@ impl<'a> Parser<'a> {
             Some(Token::Bang(_)) => {
                 let operand = self.parse_paren_unalry_or_literal()?; // NOT has high precedence
                 Ok(SyntaxNode::Not(Box::new(operand)))
-            }
+            },
             Some(x) => Err(format!("Unexpected token: {}", x.to_string())),
             None => Err("Unexpected end of input".to_string()),
         }
@@ -99,7 +99,7 @@ impl<'a> Parser<'a> {
             let precedence = op.get_precedence();
 
             if let Some(precedence) = precedence {
-                if precedence <= min_precedence {
+                if precedence <= min_precedence && precedence != 1 {
                     break;
                 }
 
@@ -120,6 +120,12 @@ impl<'a> Parser<'a> {
                     Token::Greater(_) => SyntaxNode::Greater(Box::new(left), Box::new(right)),
                     Token::GreaterEqual(_) => {
                         SyntaxNode::GreaterEqual(Box::new(left), Box::new(right))
+                    },
+                    Token::Equal(_) => {
+                        match left {
+                                SyntaxNode::Identifier(name) => SyntaxNode::Assign(name, Box::new(right)),
+                                _ => return Err(format!("Invalid assignment target: {}", left)),
+                            }
                     }
                     _ => unreachable!(),
                 };

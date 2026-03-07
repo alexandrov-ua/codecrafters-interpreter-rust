@@ -226,6 +226,9 @@ impl Evaluate for SyntaxNode<'_> {
                 Ok(Value::Nil)
             }
             SyntaxNode::Variable(name, expr) => {
+                if !context.has_variable(name) {
+                    context.set_variable(name, Value::Nil);
+                }
                 let val = expr.evaluate(context)?;
                 context.set_variable(name, val.clone());
                 Ok(val)
@@ -233,6 +236,15 @@ impl Evaluate for SyntaxNode<'_> {
             SyntaxNode::Identifier(name) => {
                 if let Some(val) = context.get_variable(name) {
                     Ok(val.clone())
+                } else {
+                    Err(format!("Undefined variable: {}", name))
+                }
+            }
+            SyntaxNode::Assign(name, expr) => {
+                if context.has_variable(name) {
+                    let val = expr.evaluate(context)?;
+                    context.set_variable(name, val.clone());
+                    Ok(val)
                 } else {
                     Err(format!("Undefined variable: {}", name))
                 }

@@ -25,6 +25,7 @@ pub enum SyntaxNode<'a> {
     Statement(Box<SyntaxNode<'a>>),
     Variable(&'a str, Box<SyntaxNode<'a>>), 
     Identifier(&'a str), 
+    Assign(&'a str, Box<SyntaxNode<'a>>),
     NilLiteral, 
 }
 
@@ -56,6 +57,7 @@ impl Display for SyntaxNode<'_> {
             SyntaxNode::Statement(i) => write!(f, "{}", i),
             SyntaxNode::Variable(name, expr) => write!(f, "(var {} {})", name, expr),
             SyntaxNode::Identifier(name) => write!(f, "{}", name),
+            SyntaxNode::Assign(name, expr) => write!(f, "(= {} {})", name, expr),
         }
     }
 }
