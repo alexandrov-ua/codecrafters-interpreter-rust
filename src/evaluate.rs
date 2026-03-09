@@ -26,48 +26,65 @@ impl Display for Value {
     }
 }
 
-pub struct ValiableContext<'a> {
-    variables: HashMap<String, Value>,
-    parent: Option<&'a ValiableContext<'a>>,
+pub struct ValiableContext {
+    variables: Vec<HashMap<String, Value>>,
 }
 
-impl<'a> ValiableContext<'a> {
+impl ValiableContext {
     pub fn new() -> Self {
         ValiableContext {
-            variables: HashMap::new(),
-            parent: None,
+            variables: vec![HashMap::new()],
         }
+    }
+
+    fn set_in_current_scoupe(&mut self, name: &str, value: Value) {
+        self.variables
+            .last_mut()
+            .unwrap()
+            .insert(name.to_string(), value);
+    }
+
+    fn has_in_current_scoupe(&self, name: &str) -> bool {
+        self.variables.last().unwrap().contains_key(name)
     }
 
     fn set_variable(&mut self, name: &str, value: Value) {
-        self.variables.insert(name.to_string(), value);
+        for scope in self.variables.iter_mut().rev() {
+            if scope.contains_key(name) {
+                scope.insert(name.to_string(), value);
+                return;
+            }
+        }
+        self.set_in_current_scoupe(name, value);
     }
 
     fn get_variable(&self, name: &str) -> Option<&Value> {
-        match self.variables.get(name) {
-            Some(value) => Some(value),
-            None => match &self.parent {
-                Some(parent) => parent.get_variable(name),
-                None => None,
-            },
+        for scope in self.variables.iter().rev() {
+            if let Some(value) = scope.get(name) {
+                return Some(value);
+            }
         }
+        None
     }
 
     fn has_variable(&self, name: &str) -> bool {
-        match self.variables.contains_key(name) {
-            true => true,
-            false => match &self.parent {
-                Some(parent) => parent.has_variable(name),
-                None => false,
-            },
+        for scope in self.variables.iter().rev() {
+            if scope.contains_key(name) {
+                return true;
+            }
         }
+        false
     }
 
-    fn new_scoupe<'b>(&'b self) -> ValiableContext<'b> {
-        ValiableContext {
-            variables: HashMap::new(),
-            parent: Some(self),
+    fn new_child_scoupe(&mut self) {
+        self.variables.push(HashMap::new());
+    }
+
+    fn exit_scoupe(&mut self) {
+        if self.variables.len() < 2 {
+            panic!("Cannot exit the global scope");
         }
+        self.variables.pop();
     }
 }
 
@@ -242,16 +259,22 @@ impl Evaluate for SyntaxNode<'_> {
             }
             SyntaxNode::Scoupe(v) => {
                 for i in v {
-                    match i{
-                        SyntaxNode::Scoupe(_)=> i.evaluate(&mut context.new_scoupe())?,
-                        _ => i.evaluate(context)?,
+                    match i {
+                        SyntaxNode::Scoupe(_) => {
+                            context.new_child_scoupe();
+                            i.evaluate(context)?;
+                            context.exit_scoupe();
+                        }
+                        _ => {
+                            i.evaluate(context)?;
+                        }
                     };
                 }
                 Ok(Value::Nil)
             }
             SyntaxNode::Variable(name, expr) => {
-                if !context.has_variable(name) {
-                    context.set_variable(name, Value::Nil);
+                if !context.has_in_current_scoupe(name) {
+                    context.set_in_current_scoupe(name, Value::Nil);
                 }
                 let val = expr.evaluate(context)?;
                 context.set_variable(name, val.clone());
