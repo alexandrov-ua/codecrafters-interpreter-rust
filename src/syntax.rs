@@ -26,6 +26,7 @@ pub enum SyntaxNode<'a> {
     Variable(&'a str, Box<SyntaxNode<'a>>), 
     Identifier(&'a str), 
     Assign(&'a str, Box<SyntaxNode<'a>>),
+    IfElse(Box<SyntaxNode<'a>>, Box<SyntaxNode<'a>>, Option<Box<SyntaxNode<'a>>>),
     NilLiteral, 
 }
 
@@ -58,6 +59,8 @@ impl Display for SyntaxNode<'_> {
             SyntaxNode::Variable(name, expr) => write!(f, "(var {} {})", name, expr),
             SyntaxNode::Identifier(name) => write!(f, "{}", name),
             SyntaxNode::Assign(name, expr) => write!(f, "(= {} {})", name, expr),
+            SyntaxNode::IfElse(cond, true_st , Some(false_st)) => write!(f, "(if {} {} {})", cond, true_st, false_st),
+            SyntaxNode::IfElse(cond, true_st , None) => write!(f, "(if {} {} nil)", cond, true_st),
         }
     }
 }

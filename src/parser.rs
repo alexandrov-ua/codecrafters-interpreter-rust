@@ -16,7 +16,11 @@ impl<'a> Parser<'a> {
         self.parse_binary(0)
     }
 
-    pub fn parse_scoupe(&mut self, is_root_scope: bool) -> Result<SyntaxNode<'a>, String> {
+    pub fn parse_scoupe(
+        &mut self,
+        is_root_scope: bool,
+        get_one_statement: bool,
+    ) -> Result<SyntaxNode<'a>, String> {
         let mut lines = Vec::new();
 
         while let Some(t) = self.tokens.peek() {
@@ -24,22 +28,22 @@ impl<'a> Parser<'a> {
                 Token::EOF => break,
                 Token::LeftBrace(_) => {
                     let _ = self.tokens.next();
-                    let scoupe_node = self.parse_scoupe(false)?;
+                    let scoupe_node = self.parse_scoupe(false, false)?;
                     self.match_token(|t| matches!(t, Token::RightBrace(_)))?;
                     scoupe_node
-                },
+                }
                 Token::RightBrace(_) => {
                     if is_root_scope {
                         return Err("Unexpected '}' at root scope".to_string());
                     } else {
                         break;
                     }
-                },
+                }
                 Token::Print(_) => {
                     let _ = self.tokens.next();
                     let expr = self.parse_binary(0)?;
                     let _ = self.match_token(|t| matches!(t, Token::Semicolon(_)))?;
-                    SyntaxNode::Print(Box::new(expr))   
+                    SyntaxNode::Print(Box::new(expr))
                 }
                 Token::Var(_) => {
                     let _ = self.tokens.next();
@@ -53,10 +57,24 @@ impl<'a> Parser<'a> {
                         }
                         None => return Err("Unexpected end of input".to_string()),
                     };
-                    let expr =  self.parse_binary(0)?;
+                    let expr = self.parse_binary(0)?;
                     let _ = self.match_token(|t| matches!(t, Token::Semicolon(_)))?;
                     SyntaxNode::Variable(var_name, Box::new(expr))
-                },
+                }
+                Token::If(_) => {
+                    let _ = self.tokens.next();
+                    let _ = self.match_token(|t| matches!(t, Token::LeftParen(_)))?;
+                    let cond = self.parse_binary(0)?;
+                    let _ = self.match_token(|t| matches!(t, Token::RightParen(_)))?;
+                    let true_st = self.parse_scoupe(false, true)?;
+                    let false_st = if let Some(Token::Else(_)) = self.tokens.peek() {
+                        let _ = self.tokens.next();
+                        Some(self.parse_scoupe(false, true)?)
+                    } else {
+                        None
+                    };
+                    SyntaxNode::IfElse(Box::new(cond), Box::new(true_st), false_st.map(|n| Box::new(n)))
+                }
                 _ => {
                     let expr = self.parse_binary(0)?;
                     let _ = self.match_token(|t| matches!(t, Token::Semicolon(_)))?;
@@ -64,6 +82,10 @@ impl<'a> Parser<'a> {
                 }
             };
             lines.push(syntax_node);
+
+            if get_one_statement {
+                break;
+            }
         }
         Ok(SyntaxNode::Scoupe(lines))
     }

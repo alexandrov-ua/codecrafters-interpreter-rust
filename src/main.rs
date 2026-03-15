@@ -116,7 +116,7 @@ fn main() {
                 .collect();
 
             let mut parser = parser::Parser::new(tokens);
-            match parser.parse_scoupe(true) {
+            match parser.parse_scoupe(true, false) {
                 Ok(ast) => match ast.evaluate(&mut evaluate::ValiableContext::new()) {
                     Ok(_) => {}
                     Err(e) => {

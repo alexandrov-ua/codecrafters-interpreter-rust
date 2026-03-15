@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::fmt::{Display};
 
 use crate::syntax::SyntaxNode;
 use std::collections::HashMap;
@@ -296,6 +296,18 @@ impl Evaluate for SyntaxNode<'_> {
                     Err(format!("Undefined variable: {}", name))
                 }
             }
+            SyntaxNode::IfElse(cond, true_st, false_st) => match cond.evaluate(context)? {
+                Value::Bool(val) => {
+                    if val {
+                        Ok(true_st.evaluate(context)?)
+                    } else if let Some(fs) = false_st {
+                        Ok(fs.evaluate(context)?)
+                    } else{
+                        Ok(Value::Nil)
+                    }
+                }
+                o => Err(format!("Expected Bool found: {}", o)),
+            },
         }
     }
 }
