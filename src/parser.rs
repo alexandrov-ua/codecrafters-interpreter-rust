@@ -73,7 +73,11 @@ impl<'a> Parser<'a> {
                     } else {
                         None
                     };
-                    SyntaxNode::IfElse(Box::new(cond), Box::new(true_st), false_st.map(|n| Box::new(n)))
+                    SyntaxNode::IfElse(
+                        Box::new(cond),
+                        Box::new(true_st),
+                        false_st.map(|n| Box::new(n)),
+                    )
                 }
                 _ => {
                     let expr = self.parse_binary(0)?;

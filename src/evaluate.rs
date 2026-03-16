@@ -1,4 +1,4 @@
-use std::fmt::{Display};
+use std::fmt::Display;
 
 use crate::syntax::SyntaxNode;
 use std::collections::HashMap;
@@ -163,30 +163,28 @@ impl Evaluate for SyntaxNode<'_> {
             }
             SyntaxNode::And(left, right) => {
                 let left_val = left.evaluate(context)?;
-                let right_val = right.evaluate(context)?;
-                match (&left_val, &right_val) {
-                    (Value::Bool(l), Value::Bool(r)) => Ok(Value::Bool(*l && *r)),
-                    (Value::Bool(_), Value::Nil) => Ok(Value::Nil),
-                    (Value::Nil, Value::Bool(_)) => Ok(Value::Nil),
-                    (Value::Nil, Value::Nil) => Ok(Value::Nil),
-                    _ => Err(format!(
-                        "Type error in logical AND: {:?} AND {:?}",
-                        left_val, right_val
-                    )),
+                match left_val {
+                    Value::Bool(false) => Ok(Value::Bool(false)),
+                    x if x == Value::Nil => Ok(Value::Bool(false)),
+                    _ => match right.evaluate(context)? {
+                        Value::Bool(false) => Ok(Value::Bool(false)),
+                        Value::Bool(true) => Ok(Value::Bool(true)),
+                        x if x == Value::Nil => Ok(Value::Bool(false)),
+                        y => Ok(y),
+                    },
                 }
             }
             SyntaxNode::Or(left, right) => {
                 let left_val = left.evaluate(context)?;
-                let right_val = right.evaluate(context)?;
-                match (&left_val, &right_val) {
-                    (Value::Bool(l), Value::Bool(r)) => Ok(Value::Bool(*l || *r)),
-                    (Value::Bool(l), Value::Nil) => Ok(Value::Bool(*l)),
-                    (Value::Nil, Value::Bool(r)) => Ok(Value::Bool(*r)),
-                    (Value::Nil, Value::Nil) => Ok(Value::Nil),
-                    _ => Err(format!(
-                        "Type error in logical OR: {:?} OR {:?}",
-                        left_val, right_val
-                    )),
+                match left_val {
+                    Value::Bool(true) => Ok(Value::Bool(true)),
+                    x if x != Value::Nil && !matches!(x, Value::Bool(false)) => Ok(x),
+                    _ => match right.evaluate(context)? {
+                        Value::Bool(true) => Ok(Value::Bool(true)),
+                        Value::Bool(false) => Ok(Value::Bool(false)),
+                        x if x != Value::Nil => Ok(x),
+                        _ => Ok(Value::Bool(false)),
+                    },
                 }
             }
             SyntaxNode::Not(expr) => {
@@ -302,11 +300,19 @@ impl Evaluate for SyntaxNode<'_> {
                         Ok(true_st.evaluate(context)?)
                     } else if let Some(fs) = false_st {
                         Ok(fs.evaluate(context)?)
-                    } else{
+                    } else {
                         Ok(Value::Nil)
                     }
                 }
-                o => Err(format!("Expected Bool found: {}", o)),
+                o => {
+                    if o != Value::Nil {
+                        Ok(true_st.evaluate(context)?)
+                    } else if let Some(fs) = false_st {
+                        Ok(fs.evaluate(context)?)
+                    } else {
+                        Ok(Value::Nil)
+                    }
+                }
             },
         }
     }
